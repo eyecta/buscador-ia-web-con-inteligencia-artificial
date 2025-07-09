@@ -5,18 +5,7 @@
 
 // Language Management Functions
 function detectLanguage() {
-    // Check if language is set in session
-    if (isset($_SESSION['language'])) {
-        return $_SESSION['language'];
-    }
-    
-    // Check if language is set in cookie
-    if (isset($_COOKIE['language'])) {
-        $_SESSION['language'] = $_COOKIE['language'];
-        return $_COOKIE['language'];
-    }
-    
-    // Check if language is set via URL parameter
+    // Check if language is set via URL parameter (manual selection)
     if (isset($_GET['lang'])) {
         $lang = sanitize_input($_GET['lang']);
         if (isLanguageSupported($lang)) {
@@ -25,7 +14,18 @@ function detectLanguage() {
         }
     }
     
-    // Auto-detect from browser
+    // Check if language is set in session
+    if (isset($_SESSION['language'])) {
+        return $_SESSION['language'];
+    }
+    
+    // Check if language is set in cookie (user previously chose manually)
+    if (isset($_COOKIE['language'])) {
+        $_SESSION['language'] = $_COOKIE['language'];
+        return $_COOKIE['language'];
+    }
+    
+    // Only auto-detect from browser if no previous choice was made
     $browserLang = getBrowserLanguage();
     if (isLanguageSupported($browserLang)) {
         setLanguage($browserLang);
@@ -102,21 +102,25 @@ function setLanguage($lang) {
     return false;
 }
 
-function loadLanguage($lang = null) {
-    if ($lang === null) {
-        $lang = detectLanguage();
+function loadLanguage($langCode = null) {
+    global $lang;
+    
+    if ($langCode === null) {
+        $langCode = detectLanguage();
     }
     
-    $langFile = __DIR__ . "/../lang/{$lang}.php";
+    $langFile = __DIR__ . "/../lang/{$langCode}.php";
     
     if (file_exists($langFile)) {
         include $langFile;
-        return $lang;
+        $GLOBALS['lang'] = $lang;
+        return $langCode;
     }
     
     // Fallback to English
     include __DIR__ . '/../lang/en.php';
-    return $lang;
+    $GLOBALS['lang'] = $lang;
+    return $langCode;
 }
 
 function t($key, $params = []) {
@@ -126,13 +130,67 @@ function t($key, $params = []) {
         loadLanguage();
     }
     
-    $text = $lang[$key] ?? $key;
+    $text = isset($lang[$key]) ? $lang[$key] : $key;
     
-    if (!empty($params)) {
+    if (!empty($params) && is_array($params)) {
         $text = vsprintf($text, $params);
     }
     
     return $text;
+}
+
+// Theme Management Functions
+function detectTheme() {
+    // Check if theme is set via URL parameter (manual selection)
+    if (isset($_GET['theme'])) {
+        $theme = sanitize_input($_GET['theme']);
+        if (in_array($theme, ['light', 'dark'])) {
+            setTheme($theme);
+            return $theme;
+        }
+    }
+    
+    // Check if theme is set in session
+    if (isset($_SESSION['theme'])) {
+        return $_SESSION['theme'];
+    }
+    
+    // Check if theme is set in cookie (user previously chose manually)
+    if (isset($_COOKIE['theme'])) {
+        $_SESSION['theme'] = $_COOKIE['theme'];
+        return $_COOKIE['theme'];
+    }
+    
+    // Default to light theme
+    return 'light';
+}
+
+function setTheme($theme) {
+    if (in_array($theme, ['light', 'dark'])) {
+        $_SESSION['theme'] = $theme;
+        setcookie('theme', $theme, time() + (86400 * 30), '/'); // 30 days
+        return true;
+    }
+    return false;
+}
+
+function getCurrentTheme() {
+    return detectTheme();
+}
+
+function getThemeClass() {
+    return getCurrentTheme() === 'dark' ? 'dark' : '';
+}
+
+function getLogo($theme = null) {
+    if ($theme === null) {
+        $theme = getCurrentTheme();
+    }
+    
+    $logoKey = $theme === 'dark' ? 'site_logo_dark' : 'site_logo_light';
+    $defaultLogo = 'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg?auto=compress&cs=tinysrgb&w=200';
+    
+    return getSetting($logoKey, $defaultLogo);
 }
 
 function sanitize_input($data) {
@@ -207,12 +265,19 @@ function getCachedResult($query) {
     }
 }
 
-function cacheSearchResult($query, $resultsJson) {
+function cacheSearchResult($query, $resultsJson, $aiSummary = null) {
     global $dbInstance;
     try {
+        // Store both results and AI summary in JSON
+        $data = [
+            'results' => json_decode($resultsJson, true),
+            'ai_summary' => $aiSummary
+        ];
+        $jsonData = json_encode($data);
+        
         $stmt = $dbInstance->conn->prepare("INSERT INTO searches (query, results) VALUES (:query, :results)");
         $stmt->bindValue(':query', $query, SQLITE3_TEXT);
-        $stmt->bindValue(':results', $resultsJson, SQLITE3_TEXT);
+        $stmt->bindValue(':results', $jsonData, SQLITE3_TEXT);
         $stmt->execute();
     } catch(Exception $e) {
         error_log("Error caching search result: " . $e->getMessage());
