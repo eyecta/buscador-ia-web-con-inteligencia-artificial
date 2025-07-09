@@ -32,7 +32,12 @@ if(!isset($error)) {
     // Check cache first
     $cached = getCachedResult($query);
     if($cached) {
-        $results = json_decode($cached, true);
+        $cachedData = json_decode($cached, true);
+        if (isset($cachedData['results']) && is_array($cachedData['results'])) {
+            $results = $cachedData['results'];
+        } else {
+            $results = $cachedData;
+        }
         $searchTime = microtime(true) - $startTime;
     } else {
         // Perform AI search
@@ -74,9 +79,9 @@ $middleAds = getAdvertisements('middle');
                 <!-- Logo and Search -->
                 <div class="flex items-center flex-1">
                     <a href="/" class="flex items-center mr-8">
-                        <img src="<?= htmlspecialchars($siteLogo) ?>" 
-                             alt="<?= htmlspecialchars($siteTitle) ?>" 
-                             class="w-8 h-8 rounded-full object-cover">
+                    <img src="<?= htmlspecialchars($siteLogo) ?>" 
+                         alt="<?= htmlspecialchars($siteTitle) ?>" 
+                         class="w-8 h-8 object-cover">
                         <span class="ml-2 text-xl font-semibold text-gray-900 hidden sm:block">
                             <?= htmlspecialchars($siteTitle) ?>
                         </span>
