@@ -6,8 +6,10 @@ if(!isset($dbInstance)) {
     require_once __DIR__ . '/functions.php';
 }
 
-// Load language
+// Load language and theme
 $currentLang = loadLanguage();
+$currentTheme = getCurrentTheme();
+$themeClass = getThemeClass();
 
 $siteTitle = getSetting('site_title', t('site_title'));
 $siteDescription = getSetting('site_description', t('site_description'));
@@ -25,7 +27,7 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?= $currentLang ?>" class="<?= $themeClass ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -56,6 +58,7 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -84,8 +87,16 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
+        .dark .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
         .suggestion-item:hover {
             background-color: #f3f4f6;
+        }
+        
+        .dark .suggestion-item:hover {
+            background-color: #374151;
         }
         
         .result-card {
@@ -97,6 +108,10 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
         
+        .dark .result-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
         .loading-spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #3498db;
@@ -104,6 +119,11 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
+        }
+        
+        .dark .loading-spinner {
+            border: 3px solid #374151;
+            border-top: 3px solid #60a5fa;
         }
         
         @keyframes spin {
@@ -119,6 +139,52 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
+        /* Language and Theme Dropdown */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .dark .dropdown-content {
+            background-color: #374151;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.4);
+        }
+        
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.2s;
+        }
+        
+        .dark .dropdown-content a {
+            color: white;
+        }
+        
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .dark .dropdown-content a:hover {
+            background-color: #4b5563;
+        }
     </style>
     
     <?php if(!empty($customJs)): ?>
@@ -126,8 +192,8 @@ if(isset($_GET['query']) && !empty($_GET['query'])) {
     <?= $customJs ?>
     <?php endif; ?>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-200">
     <!-- Skip to main content for accessibility -->
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded">
-        Saltar al contenido principal
+        <?= t('skip_to_content') ?>
     </a>
