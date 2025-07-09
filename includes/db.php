@@ -87,7 +87,9 @@ class DB {
             'ads_enabled' => '0',
             'ads_code' => '',
             'show_ai_summary' => '1',
-            'default_language' => 'en'
+            'default_language' => 'en',
+            'site_logo_light' => 'https://images.pexels.com/photos/414612/pexels-photo-414612.jpeg?auto=compress&cs=tinysrgb&w=200',
+            'site_logo_dark' => 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=200'
         ];
         
         foreach ($defaultSettings as $key => $value) {
