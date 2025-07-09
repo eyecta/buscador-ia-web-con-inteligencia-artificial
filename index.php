@@ -15,7 +15,7 @@ $turnstileSiteKey = getSetting('turnstile_site_key');
         <div class="text-center mb-8">
             <img src="<?= htmlspecialchars($siteLogo) ?>" 
                  alt="<?= htmlspecialchars($siteTitle) ?>" 
-                 class="w-24 h-24 mx-auto mb-4 rounded-full object-cover shadow-lg">
+                 class="w-24 h-24 mx-auto mb-4 object-cover shadow-lg">
             <h1 class="text-4xl md:text-5xl font-light text-gray-900 mb-2">
                 <?= htmlspecialchars($siteTitle) ?>
             </h1>
