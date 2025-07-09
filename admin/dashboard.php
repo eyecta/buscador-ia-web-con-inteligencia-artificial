@@ -36,9 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete_trending':
                 handleDeleteTrending();
                 break;
+            case 'save_advertisement':
+                handleSaveAdvertisement();
+                break;
+            case 'delete_advertisement':
+                handleDeleteAdvertisement();
+                break;
         }
     }
 }
+
 
 function handleUpdateSettings() {
     global $message, $error;
@@ -725,6 +732,212 @@ renderAdminNavigation($section);
                         }
                     } else {
                         echo '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No hay tendencias disponibles</td></tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Advertisement Management -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestión de Anuncios</h1>
+        <p class="text-gray-600">Administra los anuncios que se muestran en la página de resultados de búsqueda</p>
+    </div>
+
+    <!-- Add/Edit Advertisement -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Agregar/Editar Anuncio</h3>
+        
+        <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="action" value="save_advertisement">
+            <input type="hidden" name="ad_id" value="<?= isset($_GET['edit_ad']) ? (int)$_GET['edit_ad'] : 0 ?>">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <input type="text" name="ad_title" value="<?= htmlspecialchars($_POST['ad_title'] ?? '') ?>" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contenido (HTML permitido)</label>
+                <textarea name="ad_content" rows="5" 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><?= htmlspecialchars($_POST['ad_content'] ?? '') ?></textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Posición</label>
+                <select name="ad_position" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="top" <?= (($_POST['ad_position'] ?? '') === 'top') ? 'selected' : '' ?>>Arriba</option>
+                    <option value="middle" <?= (($_POST['ad_position'] ?? '') === 'middle') ? 'selected' : '' ?>>Medio</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" name="ad_active" value="1" <?= isset($_POST['ad_active']) ? 'checked' : '' ?> class="form-checkbox">
+                    <span class="ml-2 text-sm text-gray-700">Activo</span>
+                </label>
+                <label class="ml-6 block text-sm font-medium text-gray-700">URL de clic (opcional)</label>
+                <input type="url" name="ad_click_url" value="<?= htmlspecialchars($_POST['ad_click_url'] ?? '') ?>" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                Guardar Anuncio
+            </button>
+        </form>
+    </div>
+
+    <!-- Advertisement List -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Anuncios Existentes</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posición</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <?php
+                    try {
+                        $stmt = $dbInstance->conn->prepare("SELECT * FROM advertisements ORDER BY created_at DESC");
+                        $result = $stmt->execute();
+                        $hasResults = false;
+                        
+                        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                            $hasResults = true;
+                            echo '<tr>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' . htmlspecialchars($row['title']) . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' . htmlspecialchars($row['position']) . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' . ($row['is_active'] ? 'Sí' : 'No') . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">';
+                            echo '<a href="?section=trending&edit_ad=' . $row['id'] . '" class="text-blue-600 hover:text-blue-900">Editar</a>';
+                            echo '<form method="POST" class="inline ml-2" onsubmit="return confirmDelete()">';
+                            echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($csrfToken) . '">';
+                            echo '<input type="hidden" name="action" value="delete_advertisement">';
+                            echo '<input type="hidden" name="ad_id" value="' . $row['id'] . '">';
+                            echo '<button type="submit" class="text-red-600 hover:text-red-900">Eliminar</button>';
+                            echo '</form>';
+                            echo '</td>';
+                            echo '</tr>';
+                        }
+                        
+                        if (!$hasResults) {
+                            echo '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No hay anuncios disponibles</td></tr>';
+                        }
+                    } catch (Exception $e) {
+                        echo '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Error al cargar anuncios</td></tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Advertisement Management -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestión de Anuncios</h1>
+        <p class="text-gray-600">Administra los anuncios que se muestran en la página de resultados de búsqueda</p>
+    </div>
+
+    <!-- Add/Edit Advertisement -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Agregar/Editar Anuncio</h3>
+        
+        <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="action" value="save_advertisement">
+            <input type="hidden" name="ad_id" value="<?= isset($_GET['edit_ad']) ? (int)$_GET['edit_ad'] : 0 ?>">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <input type="text" name="ad_title" value="<?= htmlspecialchars($_POST['ad_title'] ?? '') ?>" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contenido (HTML permitido)</label>
+                <textarea name="ad_content" rows="5" 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><?= htmlspecialchars($_POST['ad_content'] ?? '') ?></textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Posición</label>
+                <select name="ad_position" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="top" <?= (($_POST['ad_position'] ?? '') === 'top') ? 'selected' : '' ?>>Arriba</option>
+                    <option value="middle" <?= (($_POST['ad_position'] ?? '') === 'middle') ? 'selected' : '' ?>>Medio</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <label class="inline-flex items-center">
+                    <input type="checkbox" name="ad_active" value="1" <?= isset($_POST['ad_active']) ? 'checked' : '' ?> class="form-checkbox">
+                    <span class="ml-2 text-sm text-gray-700">Activo</span>
+                </label>
+                <label class="ml-6 block text-sm font-medium text-gray-700">URL de clic (opcional)</label>
+                <input type="url" name="ad_click_url" value="<?= htmlspecialchars($_POST['ad_click_url'] ?? '') ?>" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                Guardar Anuncio
+            </button>
+        </form>
+    </div>
+
+    <!-- Advertisement List -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Anuncios Existentes</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posición</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <?php
+                    try {
+                        $stmt = $dbInstance->conn->prepare("SELECT * FROM advertisements ORDER BY created_at DESC");
+                        $result = $stmt->execute();
+                        $hasResults = false;
+                        
+                        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                            $hasResults = true;
+                            echo '<tr>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' . htmlspecialchars($row['title']) . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' . htmlspecialchars($row['position']) . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' . ($row['is_active'] ? 'Sí' : 'No') . '</td>';
+                            echo '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">';
+                            echo '<a href="?section=trending&edit_ad=' . $row['id'] . '" class="text-blue-600 hover:text-blue-900">Editar</a>';
+                            echo '<form method="POST" class="inline ml-2" onsubmit="return confirmDelete()">';
+                            echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($csrfToken) . '">';
+                            echo '<input type="hidden" name="action" value="delete_advertisement">';
+                            echo '<input type="hidden" name="ad_id" value="' . $row['id'] . '">';
+                            echo '<button type="submit" class="text-red-600 hover:text-red-900">Eliminar</button>';
+                            echo '</form>';
+                            echo '</td>';
+                            echo '</tr>';
+                        }
+                        
+                        if (!$hasResults) {
+                            echo '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No hay anuncios disponibles</td></tr>';
+                        }
+                    } catch (Exception $e) {
+                        echo '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Error al cargar anuncios</td></tr>';
                     }
                     ?>
                 </tbody>
